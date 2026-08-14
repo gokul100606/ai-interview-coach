@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useAuth } from '@/context/AuthContext'
+import { getApiErrorMessage } from '@/services/api'
 
 export default function Login() {
   const { login } = useAuth()
@@ -23,9 +24,9 @@ export default function Login() {
     setIsLoading(true)
     try {
       await login(email, password)
-      navigate('/dashboard')
-    } catch {
-      setError('We could not log you in. Check your details and try again.')
+      navigate('/dashboard', { replace: true })
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'We could not log you in. Check your details and try again.'))
     } finally {
       setIsLoading(false)
     }

@@ -1,8 +1,15 @@
-import { Outlet } from 'react-router-dom'
-import { Link } from 'react-router-dom'
+import { Outlet, Navigate, Link } from 'react-router-dom'
 import { Sparkles } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 
 export function AuthLayout() {
+  const { isAuthenticated, isLoading } = useAuth()
+
+  // Someone already logged in shouldn't see the login/register forms again.
+  if (!isLoading && isAuthenticated) {
+    return <Navigate to="/dashboard" replace />
+  }
+
   return (
     <div className="flex min-h-screen">
       <div className="flex w-full flex-col justify-center px-6 py-12 sm:px-12 lg:w-1/2 lg:px-20">

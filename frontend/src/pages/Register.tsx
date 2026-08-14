@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useAuth } from '@/context/AuthContext'
+import { getApiErrorMessage } from '@/services/api'
 
 export default function Register() {
   const { register } = useAuth()
@@ -28,9 +29,9 @@ export default function Register() {
     setIsLoading(true)
     try {
       await register(name, email, password)
-      navigate('/dashboard')
-    } catch {
-      setError('We could not create your account. Please try again.')
+      navigate('/dashboard', { replace: true })
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'We could not create your account. Please try again.'))
     } finally {
       setIsLoading(false)
     }
