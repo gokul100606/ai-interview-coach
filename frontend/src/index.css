@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-paper text-ink-800 font-sans;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display text-ink-800;
+  }
+  ::selection {
+    @apply bg-ember-100 text-ink-800;
+  }
+  *:focus-visible {
+    @apply outline-none ring-2 ring-signal-500 ring-offset-2 ring-offset-paper;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-5 sm:px-8;
+  }
+}
