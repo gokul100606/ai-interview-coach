@@ -8,11 +8,12 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Waveform } from '@/components/ui/Waveform'
 import { ScoreRow } from '@/components/interview/ScoreRow'
-import { mockQuestions, mockEvaluate } from '@/data/mockData'
+import { mockEvaluate } from '@/data/mockData'
 import { interviewService } from '@/services/interviewService'
 import { getApiErrorMessage } from '@/services/api'
 import type { Evaluation } from '@/types/answer'
 import type { Interview } from '@/types/interview'
+import type { Question } from '@/types/question'
 
 export default function InterviewRoom() {
   const { id } = useParams()
@@ -23,26 +24,70 @@ export default function InterviewRoom() {
   const [isEvaluating, setIsEvaluating] = useState(false)
   const [bookmarked, setBookmarked] = useState<Record<string, boolean>>({})
 
-  // Real interview record (role/type/difficulty/ownership) — the actual
-  // question bank is still mock data; AI-generated questions land in a
-  // later phase once the FastAPI/Gemini service exists.
+  // Real data from the backend: the interview record (role/type/ownership)
+  // and its generated question set (mock-backed for now — see backend
+  // questionGenerationService.ts; a future phase swaps that generator for
+  // FastAPI/Gemini without this page changing at all).
   const [interview, setInterview] = useState<Interview | null>(null)
-  const [isLoadingInterview, setIsLoadingInterview] = useState(true)
+  const [questions, setQuestions] = useState<Question[] | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
     if (!id) return
-    setIsLoadingInterview(true)
+    setIsLoading(true)
     setLoadError('')
-    interviewService
-      .getById(id)
-      .then(setInterview)
+    Promise.all([interviewService.getById(id), interviewService.getQuestions(id)])
+      .then(([interviewData, questionsData]) => {
+        setInterview(interviewData)
+        setQuestions(questionsData)
+      })
       .catch((err) => setLoadError(getApiErrorMessage(err, "We couldn't load this interview.")))
-      .finally(() => setIsLoadingInterview(false))
+      .finally(() => setIsLoading(false))
   }, [id])
 
-  const question = mockQuestions[index]
-  const isLast = index === mockQuestions.length - 1
+  // --- Loading state ---
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        <Skeleton className="h-4 w-40" />
+        <Card className="space-y-4 p-6 sm:p-8">
+          <Skeleton className="h-5 w-24" />
+          <Skeleton className="h-7 w-full" />
+          <Skeleton className="h-40 w-full" />
+        </Card>
+      </div>
+    )
+  }
+
+  // --- Error state (not found / not owned / network) ---
+  if (loadError || !interview) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <EmptyState
+          title="Interview not found"
+          description={loadError || "This interview doesn't exist or you don't have access to it."}
+          action={<Button onClick={() => navigate('/interview/setup')}>Start a new interview</Button>}
+        />
+      </div>
+    )
+  }
+
+  // --- Empty-questions state (generation produced nothing) ---
+  if (!questions || questions.length === 0) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <EmptyState
+          title="No questions yet"
+          description="This interview doesn't have any questions prepared. Try starting a new one."
+          action={<Button onClick={() => navigate('/interview/setup')}>Start a new interview</Button>}
+        />
+      </div>
+    )
+  }
+
+  const question = questions[index]
+  const isLast = index === questions.length - 1
 
   async function handleSubmit() {
     if (!answerText.trim()) return
@@ -63,31 +108,6 @@ export default function InterviewRoom() {
     setEvaluation(null)
   }
 
-  if (isLoadingInterview) {
-    return (
-      <div className="mx-auto max-w-2xl space-y-4">
-        <Skeleton className="h-4 w-40" />
-        <Card className="space-y-4 p-6 sm:p-8">
-          <Skeleton className="h-5 w-24" />
-          <Skeleton className="h-7 w-full" />
-          <Skeleton className="h-40 w-full" />
-        </Card>
-      </div>
-    )
-  }
-
-  if (loadError || !interview) {
-    return (
-      <div className="mx-auto max-w-2xl">
-        <EmptyState
-          title="Interview not found"
-          description={loadError || "This interview doesn't exist or you don't have access to it."}
-          action={<Button onClick={() => navigate('/interview/setup')}>Start a new interview</Button>}
-        />
-      </div>
-    )
-  }
-
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-5">
@@ -96,12 +116,12 @@ export default function InterviewRoom() {
         </p>
         <div className="mt-1.5 flex items-center justify-between">
           <p className="text-sm font-medium text-ink-400">
-            Question <span className="font-mono text-ink-800">{index + 1}</span> of {mockQuestions.length}
+            Question <span className="font-mono text-ink-800">{index + 1}</span> of {questions.length}
           </p>
           <div className="h-1.5 w-32 overflow-hidden rounded-full bg-ink-100">
             <div
               className="h-full rounded-full bg-ink-800 transition-all duration-500"
-              style={{ width: `${((index + (evaluation ? 1 : 0)) / mockQuestions.length) * 100}%` }}
+              style={{ width: `${((index + (evaluation ? 1 : 0)) / questions.length) * 100}%` }}
             />
           </div>
         </div>
