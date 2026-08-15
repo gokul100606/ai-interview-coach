@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { interviewController } from '../controllers/interviewController'
 import { questionController } from '../controllers/questionController'
 import { answerController } from '../controllers/answerController'
+import { reportController } from '../controllers/reportController'
 import { requireAuth } from '../middleware/authMiddleware'
 import { validate } from '../middleware/validate'
 import { createInterviewSchema, updateInterviewSchema } from '../validators/interviewValidators'
@@ -22,6 +23,9 @@ interviewRoutes.put('/:id', validate(updateInterviewSchema), interviewController
 // Nested under /interviews rather than a separate top-level router: these
 // are single-purpose endpoints scoped entirely by interview ownership, so
 // they reuse the requireAuth already applied above instead of standing up
-// a second router + app.use mount per resource.
+// a second router + app.use mount per resource. Distinct final path
+// segments (/questions, /answers, /report) mean registration order here
+// doesn't create any routing ambiguity with /:id above.
 interviewRoutes.get('/:id/questions', questionController.listForInterview)
+interviewRoutes.get('/:id/report', reportController.getReport)
 interviewRoutes.post('/:id/answers', validate(submitAnswerSchema), answerController.submit)

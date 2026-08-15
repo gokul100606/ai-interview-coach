@@ -2,6 +2,7 @@ import { api } from './api'
 import type { Interview, CreateInterviewInput, UpdateInterviewInput } from '@/types/interview'
 import type { Question } from '@/types/question'
 import type { Answer } from '@/types/answer'
+import type { InterviewReport } from '@/types/result'
 
 // Same envelope shape as authService.ts — the backend's sendSuccess always
 // responds { success, message, data: {...} }.
@@ -53,5 +54,12 @@ export const interviewService = {
   async submitAnswer(interviewId: string, input: SubmitAnswerInput): Promise<Answer> {
     const { data } = await api.post<ApiEnvelope<{ answer: Answer }>>(`/interviews/${interviewId}/answers`, input)
     return data.data.answer
+  },
+
+  // Aggregated on the backend from Interview + Question + Answer — see
+  // reportService.ts. No separate Result document is involved.
+  async getReport(id: string): Promise<InterviewReport> {
+    const { data } = await api.get<ApiEnvelope<{ report: InterviewReport }>>(`/interviews/${id}/report`)
+    return data.data.report
   },
 }
