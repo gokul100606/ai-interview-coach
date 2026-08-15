@@ -8,7 +8,6 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Waveform } from '@/components/ui/Waveform'
 import { ScoreRow } from '@/components/interview/ScoreRow'
-import { mockEvaluate } from '@/data/mockData'
 import { interviewService } from '@/services/interviewService'
 import { getApiErrorMessage } from '@/services/api'
 import type { Evaluation } from '@/types/answer'
@@ -22,6 +21,7 @@ export default function InterviewRoom() {
   const [answerText, setAnswerText] = useState('')
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null)
   const [isEvaluating, setIsEvaluating] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const [bookmarked, setBookmarked] = useState<Record<string, boolean>>({})
 
   // Real data from the backend: the interview record (role/type/ownership)
@@ -90,12 +90,19 @@ export default function InterviewRoom() {
   const isLast = index === questions.length - 1
 
   async function handleSubmit() {
-    if (!answerText.trim()) return
+    if (!answerText.trim() || !id) return
+    setSubmitError('')
     setIsEvaluating(true)
-    // Phase 8+: POST /api/interviews/:id/answers -> Node -> FastAPI -> Gemini
-    await new Promise((r) => setTimeout(r, 900))
-    setEvaluation(mockEvaluate(answerText))
-    setIsEvaluating(false)
+    try {
+      const answer = await interviewService.submitAnswer(id, { questionId: question.id, answerText })
+      // Answer extends Evaluation (types/answer.ts) — the real backend
+      // response is a strict superset of what this UI needs.
+      setEvaluation(answer)
+    } catch (err) {
+      setSubmitError(getApiErrorMessage(err, 'We could not evaluate your answer. Please try again.'))
+    } finally {
+      setIsEvaluating(false)
+    }
   }
 
   function handleNext() {
@@ -106,6 +113,7 @@ export default function InterviewRoom() {
     setIndex((i) => i + 1)
     setAnswerText('')
     setEvaluation(null)
+    setSubmitError('')
   }
 
   return (
@@ -165,6 +173,11 @@ export default function InterviewRoom() {
               <div className="mt-4 flex items-center gap-2 text-xs text-ink-400">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> AI is scoring your answer…
               </div>
+            )}
+            {submitError && (
+              <p role="alert" className="mt-4 rounded-lg bg-rust-50 px-3 py-2 text-sm text-rust-600">
+                {submitError}
+              </p>
             )}
           </>
         ) : (

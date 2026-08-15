@@ -1,6 +1,7 @@
 import { api } from './api'
 import type { Interview, CreateInterviewInput, UpdateInterviewInput } from '@/types/interview'
 import type { Question } from '@/types/question'
+import type { Answer } from '@/types/answer'
 
 // Same envelope shape as authService.ts — the backend's sendSuccess always
 // responds { success, message, data: {...} }.
@@ -8,6 +9,13 @@ interface ApiEnvelope<T> {
   success: boolean
   message: string
   data: T
+}
+
+// Request payload for POST /api/interviews/:id/answers — mirrors
+// submitAnswerSchema on the backend (backend/src/validators/answerValidators.ts).
+export interface SubmitAnswerInput {
+  questionId: string
+  answerText: string
 }
 
 export const interviewService = {
@@ -37,5 +45,13 @@ export const interviewService = {
   async getQuestions(id: string): Promise<Question[]> {
     const { data } = await api.get<ApiEnvelope<{ questions: Question[] }>>(`/interviews/${id}/questions`)
     return data.data.questions
+  },
+
+  // Backed by mock evaluation for now (see backend
+  // answerEvaluationService.ts) — same call shape survives the switch to
+  // real AI evaluation; only the backend's scoring logic changes.
+  async submitAnswer(interviewId: string, input: SubmitAnswerInput): Promise<Answer> {
+    const { data } = await api.post<ApiEnvelope<{ answer: Answer }>>(`/interviews/${interviewId}/answers`, input)
+    return data.data.answer
   },
 }
