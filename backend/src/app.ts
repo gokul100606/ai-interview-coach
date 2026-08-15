@@ -7,6 +7,7 @@ import { apiLimiter } from './middleware/rateLimiter'
 import { notFoundHandler, errorHandler } from './middleware/errorMiddleware'
 import { healthRoutes } from './routes/healthRoutes'
 import { authRoutes } from './routes/authRoutes'
+import { interviewRoutes } from './routes/interviewRoutes'
 
 export function createApp() {
   const app = express()
@@ -29,10 +30,11 @@ export function createApp() {
 
   app.use('/api', healthRoutes)
   app.use('/api/auth', authRoutes)
+  app.use('/api/interviews', interviewRoutes)
 
   // More resource routes (interviews, questions, answers, results) are
   // added here in later phases.
-
+  
   app.use(notFoundHandler)
   app.use(errorHandler)
 

@@ -1,13 +1,18 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Bookmark, ArrowRight, Loader2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { Skeleton } from '@/components/ui/Skeleton'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { Waveform } from '@/components/ui/Waveform'
 import { ScoreRow } from '@/components/interview/ScoreRow'
 import { mockQuestions, mockEvaluate } from '@/data/mockData'
+import { interviewService } from '@/services/interviewService'
+import { getApiErrorMessage } from '@/services/api'
 import type { Evaluation } from '@/types/answer'
+import type { Interview } from '@/types/interview'
 
 export default function InterviewRoom() {
   const { id } = useParams()
@@ -17,6 +22,24 @@ export default function InterviewRoom() {
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null)
   const [isEvaluating, setIsEvaluating] = useState(false)
   const [bookmarked, setBookmarked] = useState<Record<string, boolean>>({})
+
+  // Real interview record (role/type/difficulty/ownership) — the actual
+  // question bank is still mock data; AI-generated questions land in a
+  // later phase once the FastAPI/Gemini service exists.
+  const [interview, setInterview] = useState<Interview | null>(null)
+  const [isLoadingInterview, setIsLoadingInterview] = useState(true)
+  const [loadError, setLoadError] = useState('')
+
+  useEffect(() => {
+    if (!id) return
+    setIsLoadingInterview(true)
+    setLoadError('')
+    interviewService
+      .getById(id)
+      .then(setInterview)
+      .catch((err) => setLoadError(getApiErrorMessage(err, "We couldn't load this interview.")))
+      .finally(() => setIsLoadingInterview(false))
+  }, [id])
 
   const question = mockQuestions[index]
   const isLast = index === mockQuestions.length - 1
@@ -40,17 +63,47 @@ export default function InterviewRoom() {
     setEvaluation(null)
   }
 
+  if (isLoadingInterview) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        <Skeleton className="h-4 w-40" />
+        <Card className="space-y-4 p-6 sm:p-8">
+          <Skeleton className="h-5 w-24" />
+          <Skeleton className="h-7 w-full" />
+          <Skeleton className="h-40 w-full" />
+        </Card>
+      </div>
+    )
+  }
+
+  if (loadError || !interview) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <EmptyState
+          title="Interview not found"
+          description={loadError || "This interview doesn't exist or you don't have access to it."}
+          action={<Button onClick={() => navigate('/interview/setup')}>Start a new interview</Button>}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-5 flex items-center justify-between">
-        <p className="text-sm font-medium text-ink-400">
-          Question <span className="font-mono text-ink-800">{index + 1}</span> of {mockQuestions.length}
+      <div className="mb-5">
+        <p className="text-xs font-medium text-ink-400">
+          {interview.role} · {interview.interviewType}
         </p>
-        <div className="h-1.5 w-32 overflow-hidden rounded-full bg-ink-100">
-          <div
-            className="h-full rounded-full bg-ink-800 transition-all duration-500"
-            style={{ width: `${((index + (evaluation ? 1 : 0)) / mockQuestions.length) * 100}%` }}
-          />
+        <div className="mt-1.5 flex items-center justify-between">
+          <p className="text-sm font-medium text-ink-400">
+            Question <span className="font-mono text-ink-800">{index + 1}</span> of {mockQuestions.length}
+          </p>
+          <div className="h-1.5 w-32 overflow-hidden rounded-full bg-ink-100">
+            <div
+              className="h-full rounded-full bg-ink-800 transition-all duration-500"
+              style={{ width: `${((index + (evaluation ? 1 : 0)) / mockQuestions.length) * 100}%` }}
+            />
+          </div>
         </div>
       </div>
 

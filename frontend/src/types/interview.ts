@@ -16,3 +16,22 @@ export interface Interview {
   completedAt?: string
   createdAt: string
 }
+
+
+// Request payload for POST /api/interviews — mirrors createInterviewSchema
+// on the backend (backend/src/validators/interviewValidators.ts).
+export interface CreateInterviewInput {
+  role: string
+  interviewType: InterviewType
+  difficulty: Difficulty
+  questionCount: number
+  resumeId?: string
+}
+
+// Request payload for PUT /api/interviews/:id — mirrors updateInterviewSchema.
+export interface UpdateInterviewInput {
+  status?: InterviewStatus
+  startedAt?: string
+  completedAt?: string
+  overallScore?: number
+}

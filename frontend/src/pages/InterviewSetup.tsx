@@ -5,6 +5,8 @@ import { UploadCloud, FileCheck2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { interviewService } from '@/services/interviewService'
+import { getApiErrorMessage } from '@/services/api'
 import type { Difficulty, InterviewType } from '@/types/interview'
 
 const types: InterviewType[] = ['Technical', 'Behavioral', 'System Design', 'Mixed']
@@ -18,6 +20,7 @@ export default function InterviewSetup() {
   const [questionCount, setQuestionCount] = useState(8)
   const [fileName, setFileName] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('') 
 
   function handleFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -26,10 +29,21 @@ export default function InterviewSetup() {
 
   async function handleCreate() {
     if (!role) return
+    setError('')
     setIsSubmitting(true)
-    // Phase 6+: POST /api/interviews, then navigate to the returned interview id.
-    await new Promise((r) => setTimeout(r, 600))
-    navigate('/interview/i_5')
+    try {
+      const interview = await interviewService.create({
+        role,
+        interviewType: type,
+        difficulty,
+        questionCount,
+      })
+      navigate(`/interview/${interview.id}`)
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'We could not create the interview. Please try again.'))
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -114,6 +128,11 @@ export default function InterviewSetup() {
         <Button className="w-full" size="lg" disabled={!role} isLoading={isSubmitting} onClick={handleCreate}>
           Generate questions
         </Button>
+         {error && (
+          <p role="alert" className="rounded-lg bg-rust-50 px-3 py-2 text-sm text-rust-600">
+            {error}
+          </p>
+        )}
       </Card>
     </div>
   )
