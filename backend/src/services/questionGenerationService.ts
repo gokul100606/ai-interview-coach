@@ -1,3 +1,5 @@
+import { env } from '../config/env'
+import { AppError } from '../utils/AppError'
 import type { IInterview } from '../models/Interview'
 
 export interface GeneratedQuestion {
@@ -8,59 +10,93 @@ export interface GeneratedQuestion {
   expectedTopics: string[]
 }
 
-/**
- * Temporary mock-based generator — the exact same 4 questions that used to
- * live in frontend/src/data/mockData.ts, ported here so they're served from
- * the database instead of bundled into the frontend.
- *
- * This is the ONLY function a later phase needs to replace. Once the
- * FastAPI/Gemini service exists, `generate()` below becomes an HTTP call to
- * it instead of cycling through this array — its signature (takes interview
- * context, returns GeneratedQuestion[]) stays the same, so questionService,
- * questionController, and the entire frontend are untouched by that switch.
- */
-const MOCK_BANK: GeneratedQuestion[] = [
-  {
-    questionText: "Explain how React's reconciliation algorithm decides what to re-render.",
-    category: 'Frontend',
-    topic: 'React',
-    difficulty: 'medium',
-    expectedTopics: ['virtual DOM', 'diffing', 'keys'],
-  },
-  {
-    questionText: 'What is the difference between authentication and authorization?',
-    category: 'Security',
-    topic: 'Web Security',
-    difficulty: 'easy',
-    expectedTopics: ['identity verification', 'permissions', 'JWT'],
-  },
-  {
-    questionText: 'How would you design a rate limiter for a public REST API?',
-    category: 'System Design',
-    topic: 'System Design',
-    difficulty: 'hard',
-    expectedTopics: ['token bucket', 'sliding window', 'Redis'],
-  },
-  {
-    questionText: 'Describe a time you disagreed with a teammate about a technical decision. What happened?',
-    category: 'Behavioral',
-    topic: 'Communication',
-    difficulty: 'easy',
-    expectedTopics: ['conflict resolution', 'collaboration'],
-  },
-]
+const GENERATE_TIMEOUT_MS = 20_000
 
+const VALID_DIFFICULTIES = new Set(['easy', 'medium', 'hard'])
+
+/**
+ * Calls the FastAPI/Gemini service instead of the old static mock bank.
+ * Signature is unchanged from the mock version except sync -> async (an
+ * HTTP call can't be synchronous) — questionService.generateForInterview
+ * is the only caller and just needed one `await` added for that reason;
+ * nothing else about its interface changed.
+ */
 export const questionGenerationService = {
-  /**
-   * Produces `interview.questionCount` questions for the given interview.
-   * Cycles through the fixed mock bank so any question count (4-25) is
-   * always satisfied — never empty, never throws.
-   */
-  generate(interview: Pick<IInterview, 'role' | 'interviewType' | 'difficulty' | 'questionCount'>): GeneratedQuestion[] {
-    const questions: GeneratedQuestion[] = []
-    for (let i = 0; i < interview.questionCount; i++) {
-      questions.push(MOCK_BANK[i % MOCK_BANK.length])
+  async generate(
+    interview: Pick<IInterview, 'role' | 'interviewType' | 'difficulty' | 'questionCount'>,
+  ): Promise<GeneratedQuestion[]> {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS)
+
+    let response: Response
+    try {
+      response = await fetch(`${env.AI_SERVICE_URL}/api/generate-questions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role: interview.role,
+          interviewType: interview.interviewType,
+          difficulty: interview.difficulty,
+          questionCount: interview.questionCount,
+        }),
+        signal: controller.signal,
+      })
+    } catch (err) {
+      const isAbort = err instanceof Error && err.name === 'AbortError'
+      throw new AppError(
+        isAbort
+          ? 'Question generation timed out. Please try again.'
+          : 'The AI question service is unavailable right now. Please try again shortly.',
+        503,
+      )
+    } finally {
+      clearTimeout(timeout)
     }
+
+    if (!response.ok) {
+      throw new AppError('The AI question service returned an error. Please try again shortly.', 502)
+    }
+
+    let payload: { questions?: unknown }
+    try {
+      payload = await response.json()
+    } catch {
+      throw new AppError('The AI question service returned an invalid response.', 502)
+    }
+
+    if (!Array.isArray(payload.questions) || payload.questions.length === 0) {
+      throw new AppError('The AI question service returned no questions.', 502)
+    }
+
+    // Defensive normalization — FastAPI's own Pydantic validation already
+    // guarantees shape on its side, but this endpoint crosses a network
+    // boundary, so nothing here trusts the response blindly. Note: `order`
+    // is intentionally ignored — questionService assigns order from array
+    // index itself, exactly as it did with the old mock bank, so it needs
+    // no changes for this switch.
+    const questions: GeneratedQuestion[] = payload.questions
+      .map((raw: unknown): GeneratedQuestion | null => {
+        if (typeof raw !== 'object' || raw === null) return null
+        const q = raw as Record<string, unknown>
+        const questionText = typeof q.questionText === 'string' ? q.questionText.trim() : ''
+        if (!questionText) return null
+        const difficulty = typeof q.difficulty === 'string' && VALID_DIFFICULTIES.has(q.difficulty)
+          ? (q.difficulty as GeneratedQuestion['difficulty'])
+          : interview.difficulty
+        return {
+          questionText,
+          category: typeof q.category === 'string' && q.category ? q.category : interview.interviewType,
+          topic: typeof q.topic === 'string' && q.topic ? q.topic : interview.role,
+          difficulty,
+          expectedTopics: Array.isArray(q.expectedTopics) ? q.expectedTopics.map(String) : [],
+        }
+      })
+      .filter((q: GeneratedQuestion | null): q is GeneratedQuestion => q !== null)
+
+    if (questions.length === 0) {
+      throw new AppError('The AI question service returned no usable questions.', 502)
+    }
+
     return questions
   },
 }

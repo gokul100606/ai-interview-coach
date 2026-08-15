@@ -1,3 +1,5 @@
+import { env } from '../config/env'
+import { AppError } from '../utils/AppError'
 import type { IQuestion } from '../models/Question'
 import type { IInterview } from '../models/Interview'
 
@@ -13,46 +15,93 @@ export interface EvaluationResult {
   idealAnswer: string
 }
 
+const EVALUATE_TIMEOUT_MS = 20_000
+
+function clampScore(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n)) return 0
+  return Math.max(0, Math.min(100, Math.round(n)))
+}
+
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
+}
+
 /**
- * Temporary deterministic evaluation — the server-side port of the
- * frontend's old mockEvaluate (frontend/src/data/mockData.ts). Now the
- * ONLY place a score is computed; the frontend never fabricates one.
- *
- * This is the one function a later phase needs to replace: swap the body
- * for a call to the FastAPI/Gemini service, keep the same
- * evaluateAnswer({ question, answer, interview }) -> EvaluationResult
- * signature, and answerService, answerController, and the frontend all
- * stay exactly as they are.
+ * Calls the FastAPI/Gemini service instead of the old local mock scoring.
+ * Signature is unchanged except sync -> async (an HTTP call can't be
+ * synchronous) — answerService.submitAnswer is the only caller and just
+ * needed one `await` added for that reason; nothing else about its
+ * interface changed.
  */
 export const answerEvaluationService = {
-  evaluateAnswer({
+  async evaluateAnswer({
+    question,
     answer,
   }: {
     question: IQuestion
     answer: string
     interview: IInterview
-  }): EvaluationResult {
-    const length = answer.trim().length
-    const base = Math.min(95, 45 + Math.floor(length / 4))
-    const jitter = (n: number) => Math.max(30, Math.min(98, n + Math.floor(Math.random() * 10 - 5)))
+  }): Promise<EvaluationResult> {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), EVALUATE_TIMEOUT_MS)
 
-    const technicalScore = jitter(base)
-    const relevanceScore = jitter(base + 3)
-    const clarityScore = jitter(base - 4)
-    const completenessScore = jitter(base - 2)
-    const overallScore = Math.round((technicalScore + relevanceScore + clarityScore + completenessScore) / 4)
+    let response: Response
+    try {
+      response = await fetch(`${env.AI_SERVICE_URL}/api/evaluate-answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: {
+            questionText: question.questionText,
+            category: question.category,
+            topic: question.topic,
+            difficulty: question.difficulty,
+            expectedTopics: question.expectedTopics,
+          },
+          answerText: answer,
+        }),
+        signal: controller.signal,
+      })
+    } catch (err) {
+      const isAbort = err instanceof Error && err.name === 'AbortError'
+      throw new AppError(
+        isAbort
+          ? 'Answer evaluation timed out. Please try again.'
+          : 'The AI evaluation service is unavailable right now. Please try again shortly.',
+        503,
+      )
+    } finally {
+      clearTimeout(timeout)
+    }
 
+    if (!response.ok) {
+      throw new AppError('The AI evaluation service returned an error. Please try again shortly.', 502)
+    }
+
+    let payload: Record<string, unknown>
+    try {
+      payload = await response.json()
+    } catch {
+      throw new AppError('The AI evaluation service returned an invalid response.', 502)
+    }
+
+    // FastAPI's contract uses "communicationScore" (see
+    // ai-service/app/schemas.py, which follows the Phase 8 spec's example
+    // response exactly). The Node/Mongo side has used "clarityScore" on
+    // the Answer model since Phase 2 — this is the one place that naming
+    // gap is bridged, so nothing downstream (Answer model, answerService,
+    // Report, frontend types) has to change.
     return {
-      technicalScore,
-      relevanceScore,
-      clarityScore,
-      completenessScore,
-      overallScore,
-      strengths: ['Covered the core concept clearly', 'Used a concrete example to ground the explanation'],
-      weaknesses: ['Could go deeper on edge cases', 'Missed mentioning trade-offs'],
-      suggestions: ['Mention time/space complexity where relevant', 'Compare against at least one alternative approach'],
-      idealAnswer:
-        'A strong answer names the core mechanism, walks through a concrete example, and closes with trade-offs or edge cases an interviewer would probe next.',
+      technicalScore: clampScore(payload.technicalScore),
+      relevanceScore: clampScore(payload.relevanceScore),
+      clarityScore: clampScore(payload.communicationScore),
+      completenessScore: clampScore(payload.completenessScore),
+      overallScore: clampScore(payload.overallScore),
+      strengths: toStringArray(payload.strengths),
+      weaknesses: toStringArray(payload.weaknesses),
+      suggestions: toStringArray(payload.suggestions),
+      idealAnswer: typeof payload.idealAnswer === 'string' ? payload.idealAnswer : '',
     }
   },
 }

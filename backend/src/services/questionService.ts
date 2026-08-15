@@ -9,7 +9,7 @@ export const questionService = {
    * interviewService.create().
    */
   async generateForInterview(interview: IInterview): Promise<IQuestion[]> {
-    const generated = questionGenerationService.generate(interview)
+    const generated = await questionGenerationService.generate(interview)
     const docs = generated.map((q, i) => ({
       interviewId: interview._id,
       questionText: q.questionText,

@@ -24,7 +24,7 @@ export const answerService = {
       throw AppError.notFound('Question not found for this interview')
     }
 
-    const evaluation = answerEvaluationService.evaluateAnswer({
+    const evaluation = await answerEvaluationService.evaluateAnswer({
       question,
       answer: input.answerText,
       interview,
