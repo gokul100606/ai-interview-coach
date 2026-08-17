@@ -12,11 +12,13 @@ class Settings:
     os.environ directly.
     """
 
-    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
-    # "gemini-flash-latest" auto-tracks Google's current stable Flash
-    # model rather than pinning a dated version that may be deprecated —
-    # see ai-service/.env.example for why.
-    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+    groq_api_key: str = os.getenv("GROQ_API_KEY", "")
+    # openai/gpt-oss-20b: OpenAI's open-weight model served on Groq —
+    # confirmed current and actively recommended by Groq's own docs as of
+    # this migration (Aug 2026), including as the suggested replacement
+    # for several models Groq has since deprecated. Configurable so a
+    # future model change doesn't require touching code.
+    groq_model: str = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
     port: int = int(os.getenv("PORT", "8000"))
 
 

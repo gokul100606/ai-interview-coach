@@ -6,7 +6,7 @@ from app.schemas import (
     GenerateQuestionsRequest,
     GenerateQuestionsResponse,
 )
-from app.services.gemini_service import gemini_service
+from app.services.ai_service import ai_service
 
 app = FastAPI(title="AI Interview Coach — AI Service", version="0.1.0")
 
@@ -24,9 +24,9 @@ def health():
 @app.post("/api/generate-questions", response_model=GenerateQuestionsResponse)
 async def generate_questions(payload: GenerateQuestionsRequest) -> GenerateQuestionsResponse:
     try:
-        questions = await gemini_service.generate_questions(payload)
+        questions = await ai_service.generate_questions(payload)
     except ValueError as exc:
-        # Malformed/empty Gemini output, missing API key, or a raw SDK
+        # Malformed/empty AI output, missing API key, or a raw SDK
         # failure — all surfaced as a clean 502 rather than a raw
         # traceback. Node's questionGenerationService turns this into the
         # existing AppError format for the frontend.
@@ -37,6 +37,6 @@ async def generate_questions(payload: GenerateQuestionsRequest) -> GenerateQuest
 @app.post("/api/evaluate-answer", response_model=EvaluateAnswerResponse)
 async def evaluate_answer(payload: EvaluateAnswerRequest) -> EvaluateAnswerResponse:
     try:
-        return await gemini_service.evaluate_answer(payload.question, payload.answerText)
+        return await ai_service.evaluate_answer(payload.question, payload.answerText)
     except ValueError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc

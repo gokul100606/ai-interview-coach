@@ -28,7 +28,7 @@ function toStringArray(value: unknown): string[] {
 }
 
 /**
- * Calls the FastAPI/Gemini service instead of the old local mock scoring.
+ * Calls the FastAPI AI service instead of the old local mock scoring.
  * Signature is unchanged except sync -> async (an HTTP call can't be
  * synchronous) — answerService.submitAnswer is the only caller and just
  * needed one `await` added for that reason; nothing else about its

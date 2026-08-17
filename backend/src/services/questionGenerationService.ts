@@ -15,7 +15,7 @@ const GENERATE_TIMEOUT_MS = 20_000
 const VALID_DIFFICULTIES = new Set(['easy', 'medium', 'hard'])
 
 /**
- * Calls the FastAPI/Gemini service instead of the old static mock bank.
+ * Calls the FastAPI AI service instead of the old static mock bank.
  * Signature is unchanged from the mock version except sync -> async (an
  * HTTP call can't be synchronous) — questionService.generateForInterview
  * is the only caller and just needed one `await` added for that reason;

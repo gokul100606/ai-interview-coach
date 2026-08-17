@@ -27,7 +27,7 @@ export default function InterviewRoom() {
   // Real data from the backend: the interview record (role/type/ownership)
   // and its generated question set (mock-backed for now — see backend
   // questionGenerationService.ts; a future phase swaps that generator for
-  // FastAPI/Gemini without this page changing at all).
+  // FastAPI/AI service without this page changing at all).
   const [interview, setInterview] = useState<Interview | null>(null)
   const [questions, setQuestions] = useState<Question[] | null>(null)
   const [isLoading, setIsLoading] = useState(true)
