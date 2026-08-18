@@ -8,6 +8,7 @@ import { notFoundHandler, errorHandler } from './middleware/errorMiddleware'
 import { healthRoutes } from './routes/healthRoutes'
 import { authRoutes } from './routes/authRoutes'
 import { interviewRoutes } from './routes/interviewRoutes'
+import { analyticsRoutes } from './routes/analyticsRoutes'
 
 export function createApp() {
   const app = express()
@@ -31,10 +32,11 @@ export function createApp() {
   app.use('/api', healthRoutes)
   app.use('/api/auth', authRoutes)
   app.use('/api/interviews', interviewRoutes)
+  app.use('/api/analytics', analyticsRoutes)
 
-  // More resource routes (interviews, questions, answers, results) are
-  // added here in later phases.
-  
+  // More resource routes (questions, answers, results) are added here in
+  // later phases.
+
   app.use(notFoundHandler)
   app.use(errorHandler)
 

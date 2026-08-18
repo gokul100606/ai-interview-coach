@@ -17,7 +17,6 @@ export interface Interview {
   createdAt: string
 }
 
-
 // Request payload for POST /api/interviews — mirrors createInterviewSchema
 // on the backend (backend/src/validators/interviewValidators.ts).
 export interface CreateInterviewInput {
@@ -29,9 +28,10 @@ export interface CreateInterviewInput {
 }
 
 // Request payload for PUT /api/interviews/:id — mirrors updateInterviewSchema.
+// Phase 10A: status/startedAt/completedAt/overallScore were removed from
+// the backend contract (they're server-controlled by the answer-submission
+// lifecycle, never client-settable) — this type is updated to match, even
+// though nothing currently calls interviewService.update() from any page.
 export interface UpdateInterviewInput {
-  status?: InterviewStatus
-  startedAt?: string
-  completedAt?: string
-  overallScore?: number
+  resumeId?: string
 }
