@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Waveform } from '@/components/ui/Waveform'
 import { ScoreRow } from '@/components/interview/ScoreRow'
 import { interviewService } from '@/services/interviewService'
+import { bookmarkService } from '@/services/bookmarkService'
 import { getApiErrorMessage } from '@/services/api'
 import type { Evaluation } from '@/types/answer'
 import type { Interview } from '@/types/interview'
@@ -22,7 +23,8 @@ export default function InterviewRoom() {
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null)
   const [isEvaluating, setIsEvaluating] = useState(false)
   const [submitError, setSubmitError] = useState('')
-  const [bookmarked, setBookmarked] = useState<Record<string, boolean>>({})
+  const [bookmarkPending, setBookmarkPending] = useState(false)
+  const [bookmarkError, setBookmarkError] = useState('')
 
   // Real data from the backend: the interview record (role/type/ownership)
   // and its generated question set (mock-backed for now — see backend
@@ -89,6 +91,23 @@ export default function InterviewRoom() {
   const question = questions[index]
   const isLast = index === questions.length - 1
 
+  async function handleToggleBookmark() {
+    setBookmarkError('')
+    setBookmarkPending(true)
+    try {
+      // Wait for the real result rather than flipping the icon
+      // immediately — a failed request must not look like it succeeded.
+      const nowBookmarked = question.bookmarked
+        ? await bookmarkService.removeBookmark(question.id)
+        : await bookmarkService.bookmarkQuestion(question.id)
+      setQuestions((prev) => (prev ? prev.map((q) => (q.id === question.id ? { ...q, bookmarked: nowBookmarked } : q)) : prev))
+    } catch (err) {
+      setBookmarkError(getApiErrorMessage(err, 'We could not update your bookmark. Please try again.'))
+    } finally {
+      setBookmarkPending(false)
+    }
+  }
+
   async function handleSubmit() {
     if (!answerText.trim() || !id) return
     setSubmitError('')
@@ -114,6 +133,7 @@ export default function InterviewRoom() {
     setAnswerText('')
     setEvaluation(null)
     setSubmitError('')
+    setBookmarkError('')
   }
 
   return (
@@ -143,12 +163,14 @@ export default function InterviewRoom() {
           </div>
           <button
             aria-label="Bookmark question"
-            onClick={() => setBookmarked((b) => ({ ...b, [question.id]: !b[question.id] }))}
-            className="rounded-full p-1.5 text-ink-300 transition-colors hover:bg-ink-50 hover:text-ember-600"
+            onClick={handleToggleBookmark}
+            disabled={bookmarkPending}
+            className="rounded-full p-1.5 text-ink-300 transition-colors hover:bg-ink-50 hover:text-ember-600 disabled:opacity-50"
           >
-            <Bookmark className={bookmarked[question.id] ? 'h-5 w-5 fill-ember-500 text-ember-500' : 'h-5 w-5'} />
+            <Bookmark className={question.bookmarked ? 'h-5 w-5 fill-ember-500 text-ember-500' : 'h-5 w-5'} />
           </button>
         </div>
+        {bookmarkError && <p className="mt-1.5 text-xs text-rust-600">{bookmarkError}</p>}
 
         <h2 className="mt-4 font-display text-xl font-semibold leading-snug text-ink-800 sm:text-2xl">
           {question.questionText}

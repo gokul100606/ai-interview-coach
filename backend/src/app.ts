@@ -9,6 +9,9 @@ import { healthRoutes } from './routes/healthRoutes'
 import { authRoutes } from './routes/authRoutes'
 import { interviewRoutes } from './routes/interviewRoutes'
 import { analyticsRoutes } from './routes/analyticsRoutes'
+import { questionRoutes } from './routes/questionRoutes'
+import { bookmarkRoutes } from './routes/bookmarkRoutes'
+
 
 export function createApp() {
   const app = express()
@@ -33,6 +36,8 @@ export function createApp() {
   app.use('/api/auth', authRoutes)
   app.use('/api/interviews', interviewRoutes)
   app.use('/api/analytics', analyticsRoutes)
+  app.use('/api/questions', questionRoutes)
+  app.use('/api/bookmarks', bookmarkRoutes)
 
   // More resource routes (questions, answers, results) are added here in
   // later phases.
