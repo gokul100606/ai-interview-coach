@@ -10,6 +10,12 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>
   register: (name: string, email: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  // Phase 10D: lets a page that just saved a profile/settings change
+  // (Profile.tsx, Settings.tsx) update the shared cached user so
+  // everything reading it (e.g. Topbar's initials) reflects the change
+  // immediately, without a full reload. Does not touch login/register/
+  // logout or any cookie/JWT behavior.
+  updateUser: (user: User) => void
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -43,8 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }, [])
 
+  const updateUser = useCallback((updated: User) => {
+    setUser(updated)
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   )

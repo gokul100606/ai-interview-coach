@@ -1,20 +1,34 @@
 import { useState } from 'react'
-import { FileCheck2, UploadCloud } from 'lucide-react'
+import { FileCheck2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/context/AuthContext'
+import { userService } from '@/services/userService'
+import { getApiErrorMessage } from '@/services/api'
 
 export default function Profile() {
-  const { user } = useAuth()
+  const { user, updateUser } = useAuth()
   const [name, setName] = useState(user?.name || '')
   const [targetRole, setTargetRole] = useState(user?.targetRole || '')
+  const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
 
-  function handleSave() {
-    // Phase 6+: PUT /api/users/me
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  async function handleSave() {
+    setError('')
+    setSaved(false)
+    setIsSaving(true)
+    try {
+      const updated = await userService.updateMe({ name, targetRole })
+      updateUser(updated)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'We could not save your profile. Please try again.'))
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -33,7 +47,12 @@ export default function Profile() {
         </div>
 
         <Input label="Full name" value={name} onChange={(e) => setName(e.target.value)} />
-        <Input label="Target role" value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="e.g. Frontend Engineer" />
+        <Input
+          label="Target role"
+          value={targetRole}
+          onChange={(e) => setTargetRole(e.target.value)}
+          placeholder="e.g. Frontend Engineer"
+        />
 
         <div>
           <p className="mb-1.5 text-sm font-medium text-ink-700">Skills</p>
@@ -43,20 +62,31 @@ export default function Profile() {
                 {s}
               </span>
             ))}
+            {(!user?.skills || user.skills.length === 0) && <p className="text-sm text-ink-400">No skills added yet.</p>}
           </div>
         </div>
 
+        {/* Resume upload has no backend support yet (no file storage or
+            parsing exists) — shown honestly as unavailable rather than a
+            fake filename with a non-functional "Replace" control. */}
         <div>
           <p className="mb-1.5 text-sm font-medium text-ink-700">Resume</p>
-          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-ink-200 bg-paper px-4 py-3.5 text-sm text-ink-600 transition-colors hover:border-ink-400">
-            <FileCheck2 className="h-4 w-4 text-sage" />
-            resume_ananya_rao.pdf
-            <span className="ml-auto flex items-center gap-1 text-xs text-ink-400"><UploadCloud className="h-3.5 w-3.5" /> Replace</span>
-            <input type="file" accept="application/pdf" className="hidden" />
-          </label>
+          <div className="flex items-center gap-3 rounded-xl border border-dashed border-ink-200 bg-paper px-4 py-3.5 text-sm text-ink-400">
+            <FileCheck2 className="h-4 w-4 text-ink-300" />
+            Resume upload isn't available yet
+            <span className="ml-auto rounded-full bg-ink-100 px-2 py-0.5 text-xs font-medium text-ink-500">Coming soon</span>
+          </div>
         </div>
 
-        <Button onClick={handleSave}>{saved ? 'Saved' : 'Save changes'}</Button>
+        {error && (
+          <p role="alert" className="rounded-lg bg-rust-50 px-3 py-2 text-sm text-rust-600">
+            {error}
+          </p>
+        )}
+
+        <Button onClick={handleSave} isLoading={isSaving} disabled={!name.trim()}>
+          {saved ? 'Saved' : 'Save changes'}
+        </Button>
       </Card>
     </div>
   )

@@ -5,6 +5,15 @@ export interface User {
   targetRole?: string
   skills?: string[]
   resumeId?: string
+  // Phase 10D — mirrors the User model's preferences subdocument
+  // (backend/src/models/User.ts). Optional because users created before
+  // this phase are still served correctly by the backend (Mongoose
+  // applies the schema default on read), but the type itself can't
+  // guarantee that for every possible caller.
+  preferences?: {
+    emailDigest: boolean
+    practiceReminders: boolean
+  }
   createdAt: string
 }
 

@@ -11,7 +11,7 @@ import { interviewRoutes } from './routes/interviewRoutes'
 import { analyticsRoutes } from './routes/analyticsRoutes'
 import { questionRoutes } from './routes/questionRoutes'
 import { bookmarkRoutes } from './routes/bookmarkRoutes'
-
+import { userRoutes } from './routes/userRoutes'
 
 export function createApp() {
   const app = express()
@@ -38,9 +38,9 @@ export function createApp() {
   app.use('/api/analytics', analyticsRoutes)
   app.use('/api/questions', questionRoutes)
   app.use('/api/bookmarks', bookmarkRoutes)
+  app.use('/api/users', userRoutes)
 
-  // More resource routes (questions, answers, results) are added here in
-  // later phases.
+  // More resource routes are added here in later phases.
 
   app.use(notFoundHandler)
   app.use(errorHandler)
