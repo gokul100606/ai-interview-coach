@@ -16,6 +16,16 @@ import { userRoutes } from './routes/userRoutes'
 export function createApp() {
   const app = express()
 
+  // Trust the first hop reverse proxy (e.g. Render/Railway/Heroku/Nginx)
+  // so req.ip and req.secure reflect the real client rather than the
+  // proxy itself. Needed for express-rate-limit (apiLimiter/authLimiter)
+  // to key limits per real client IP instead of bucketing every request
+  // behind the proxy as one IP, and for cookie/protocol detection to stay
+  // correct in front of a TLS-terminating proxy. Value of 1 trusts
+  // exactly one hop; increase if the deployment topology has more
+  // proxies in front of this server.
+  app.set('trust proxy', 1)
+
   // Security headers on every response.
   app.use(helmet())
 

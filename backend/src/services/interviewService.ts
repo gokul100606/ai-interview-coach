@@ -1,20 +1,40 @@
 import { Types } from 'mongoose'
 import { Interview, IInterview } from '../models/Interview'
+import { Question } from '../models/Question'
 import { AppError } from '../utils/AppError'
 import { questionService } from './questionService'
 import type { CreateInterviewInput, UpdateInterviewInput } from '../validators/interviewValidators'
 
 export const interviewService = {
-  async create(userId: string, input: CreateInterviewInput): Promise<IInterview> {
+    async create(userId: string, input: CreateInterviewInput): Promise<IInterview> {
     const interview = await Interview.create({ ...input, userId, status: 'CREATED' })
     // Generated synchronously so the interview is immediately ready to take
-    // — InterviewRoom fetches questions right after creation with no wait
-    // or "is it ready yet?" polling. When a real AI service replaces the
-    // mock generator, this stays the natural place to call it.
-    await questionService.generateForInterview(interview)
+    // -- InterviewRoom fetches questions right after creation with no wait
+    // or "is it ready yet?" polling.
+    try {
+      await questionService.generateForInterview(interview)
+    } catch (err) {
+      // Question generation failed (AI service down/timeout/bad response --
+      // see questionGenerationService.generate, which already throws a
+      // proper AppError). Roll back so a failed creation never leaves an
+      // empty, unusable interview sitting in the user's history.
+      //
+      // Both deletes are scoped strictly to this interview's own _id, so
+      // they can never touch any other interview or another interview's
+      // questions. Question.insertMany runs ordered by default, which can
+      // persist some documents before hitting a failing one, so the
+      // Question cleanup is needed even though the common case (a
+      // network/timeout failure before any insert) leaves zero to clean up.
+      await Question.deleteMany({ interviewId: interview._id })
+      await Interview.deleteOne({ _id: interview._id })
+      // Re-throw the original error unchanged -- same AppError instance,
+      // same status code and message the caller already produced. Nothing
+      // here invents a new error type or swallows it.
+      throw err
+    }
     return interview
   },
-
+  
   async listForUser(userId: string): Promise<IInterview[]> {
     return Interview.find({ userId }).sort({ createdAt: -1 })
   },
