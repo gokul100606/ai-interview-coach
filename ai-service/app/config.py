@@ -13,13 +13,15 @@ class Settings:
     """
 
     groq_api_key: str = os.getenv("GROQ_API_KEY", "")
-    # openai/gpt-oss-20b: OpenAI's open-weight model served on Groq —
-    # confirmed current and actively recommended by Groq's own docs as of
-    # this migration (Aug 2026), including as the suggested replacement
-    # for several models Groq has since deprecated. Configurable so a
-    # future model change doesn't require touching code.
+    # "openai/gpt-oss-20b" is a currently-available Groq model — check
+    # https://console.groq.com/docs/deprecations before relying on any
+    # model long-term. Nothing in the code hardcodes a model name.
     groq_model: str = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
     port: int = int(os.getenv("PORT", "8000"))
+    # Phase 10H — shared secret validated against the X-Internal-Key header
+    # on every request to the two AI endpoints. Must match backend/.env's
+    # AI_INTERNAL_KEY exactly.
+    ai_internal_key: str = os.getenv("AI_INTERNAL_KEY", "")
 
 
 settings = Settings()

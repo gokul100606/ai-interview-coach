@@ -15,11 +15,9 @@ const GENERATE_TIMEOUT_MS = 20_000
 const VALID_DIFFICULTIES = new Set(['easy', 'medium', 'hard'])
 
 /**
- * Calls the FastAPI AI service instead of the old static mock bank.
- * Signature is unchanged from the mock version except sync -> async (an
- * HTTP call can't be synchronous) — questionService.generateForInterview
- * is the only caller and just needed one `await` added for that reason;
- * nothing else about its interface changed.
+ * Calls the FastAPI AI service (Groq-backed) instead of a static mock bank.
+ * Sends X-Internal-Key (Phase 10H) so FastAPI can reject direct calls from
+ * anything that isn't this backend.
  */
 export const questionGenerationService = {
   async generate(
@@ -32,7 +30,10 @@ export const questionGenerationService = {
     try {
       response = await fetch(`${env.AI_SERVICE_URL}/api/generate-questions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Internal-Key': env.AI_INTERNAL_KEY,
+        },
         body: JSON.stringify({
           role: interview.role,
           interviewType: interview.interviewType,
@@ -68,12 +69,6 @@ export const questionGenerationService = {
       throw new AppError('The AI question service returned no questions.', 502)
     }
 
-    // Defensive normalization — FastAPI's own Pydantic validation already
-    // guarantees shape on its side, but this endpoint crosses a network
-    // boundary, so nothing here trusts the response blindly. Note: `order`
-    // is intentionally ignored — questionService assigns order from array
-    // index itself, exactly as it did with the old mock bank, so it needs
-    // no changes for this switch.
     const questions: GeneratedQuestion[] = payload.questions
       .map((raw: unknown): GeneratedQuestion | null => {
         if (typeof raw !== 'object' || raw === null) return null

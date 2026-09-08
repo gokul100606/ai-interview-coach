@@ -71,7 +71,6 @@ const userSchema = new Schema<IUser>(
 
 // Belt-and-braces: unique index in addition to `unique: true` above, and a
 // transform so passwordHash can never leak even if a route forgets to strip it.
-userSchema.index({ email: 1 }, { unique: true })
 
 userSchema.set('toJSON', {
   virtuals: true,

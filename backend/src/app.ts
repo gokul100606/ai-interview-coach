@@ -23,7 +23,7 @@ export function createApp() {
   // behind the proxy as one IP, and for cookie/protocol detection to stay
   // correct in front of a TLS-terminating proxy. Value of 1 trusts
   // exactly one hop; increase if the deployment topology has more
-  // proxies in front of this server.
+  // proxies in front of this server. (Phase 10E)
   app.set('trust proxy', 1)
 
   // Security headers on every response.
@@ -49,8 +49,6 @@ export function createApp() {
   app.use('/api/questions', questionRoutes)
   app.use('/api/bookmarks', bookmarkRoutes)
   app.use('/api/users', userRoutes)
-
-  // More resource routes are added here in later phases.
 
   app.use(notFoundHandler)
   app.use(errorHandler)

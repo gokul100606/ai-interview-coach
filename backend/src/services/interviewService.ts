@@ -6,7 +6,7 @@ import { questionService } from './questionService'
 import type { CreateInterviewInput, UpdateInterviewInput } from '../validators/interviewValidators'
 
 export const interviewService = {
-    async create(userId: string, input: CreateInterviewInput): Promise<IInterview> {
+  async create(userId: string, input: CreateInterviewInput): Promise<IInterview> {
     const interview = await Interview.create({ ...input, userId, status: 'CREATED' })
     // Generated synchronously so the interview is immediately ready to take
     // -- InterviewRoom fetches questions right after creation with no wait
@@ -14,8 +14,8 @@ export const interviewService = {
     try {
       await questionService.generateForInterview(interview)
     } catch (err) {
-      // Question generation failed (AI service down/timeout/bad response --
-      // see questionGenerationService.generate, which already throws a
+      // Phase 10F: question generation failed (AI service down/timeout/bad
+      // response -- questionGenerationService.generate already throws a
       // proper AppError). Roll back so a failed creation never leaves an
       // empty, unusable interview sitting in the user's history.
       //
@@ -28,13 +28,12 @@ export const interviewService = {
       await Question.deleteMany({ interviewId: interview._id })
       await Interview.deleteOne({ _id: interview._id })
       // Re-throw the original error unchanged -- same AppError instance,
-      // same status code and message the caller already produced. Nothing
-      // here invents a new error type or swallows it.
+      // same status code and message the caller already produced.
       throw err
     }
     return interview
   },
-  
+
   async listForUser(userId: string): Promise<IInterview[]> {
     return Interview.find({ userId }).sort({ createdAt: -1 })
   },
@@ -58,16 +57,10 @@ export const interviewService = {
 
   /**
    * PUT /api/interviews/:id — Phase 10A security fix.
-   *
-   * Only ever applies `resumeId`. This is deliberately an explicit
-   * allowlist, not a spread/Object.assign of `input`, as defense-in-depth:
-   * even if updateInterviewSchema (interviewValidators.ts) were ever
-   * loosened or bypassed upstream and `input` somehow carried a `status`
-   * or `overallScore` property again, this function would still never
-   * read or apply it. Interview lifecycle/result fields (status,
+   * Only ever applies `resumeId`. Explicit allowlist, not a spread of
+   * `input`, as defense-in-depth -- lifecycle/result fields (status,
    * startedAt, completedAt, overallScore) are owned exclusively by
-   * answerService.advanceInterviewStatus as answers are submitted and
-   * AI-evaluated — this endpoint must never set them directly.
+   * answerService.advanceInterviewStatus.
    */
   async update(userId: string, interviewId: string, input: UpdateInterviewInput): Promise<IInterview> {
     const interview = await this.getOwned(userId, interviewId)
