@@ -224,7 +224,7 @@ class AIService:
 
         if _client is None:
             raise ValueError(
-                "GROQ_API_KEY is not configured on the AI service"
+                "AI service is not configured correctly"
             )
 
         kwargs: Dict[str, Any] = {
@@ -282,7 +282,7 @@ class AIService:
                 ) from exc
 
             raise ValueError(
-                f"Groq request failed: {exc}"
+                "Groq request failed"
             ) from exc
 
         except APIConnectionError as exc:
@@ -304,7 +304,7 @@ class AIService:
             )
 
             raise ValueError(
-                f"Groq request failed: {exc}"
+                "Groq request failed"
             ) from exc
 
         choices = getattr(
@@ -348,7 +348,7 @@ class AIService:
             )
 
             raise ValueError(
-                f"The AI provider returned invalid JSON: {exc}"
+                "The AI provider returned invalid JSON"
             ) from exc
 
     # ============================================================
