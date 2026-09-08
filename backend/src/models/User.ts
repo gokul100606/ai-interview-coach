@@ -76,9 +76,9 @@ userSchema.set('toJSON', {
   virtuals: true,
   transform: (_doc, ret) => {
     ret.id = ret._id
-    delete ret._id
-    delete ret.__v
-    delete ret.passwordHash
+    delete (ret as { _id?: unknown })._id
+    delete (ret as { __v?: unknown }).__v
+    delete (ret as { passwordHash?: unknown }).passwordHash
     return ret
   },
 })

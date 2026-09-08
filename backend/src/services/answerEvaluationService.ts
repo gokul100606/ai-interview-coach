@@ -82,7 +82,7 @@ export const answerEvaluationService = {
 
     let payload: Record<string, unknown>
     try {
-      payload = await response.json()
+      payload = (await response.json()) as Record<string, unknown>
     } catch {
       throw new AppError('The AI evaluation service returned an invalid response.', 502)
     }

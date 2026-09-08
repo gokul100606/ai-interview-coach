@@ -61,8 +61,8 @@ resultSchema.index({ userId: 1, createdAt: -1 })
 resultSchema.set('toJSON', {
   transform: (_doc, ret) => {
     ret.id = ret._id
-    delete ret._id
-    delete ret.__v
+    delete (ret as { _id?: unknown })._id
+    delete (ret as { __v?: unknown }).__v
     return ret
   },
 })

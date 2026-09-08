@@ -60,7 +60,7 @@ export const questionGenerationService = {
 
     let payload: { questions?: unknown }
     try {
-      payload = await response.json()
+      payload = (await response.json()) as { questions?: unknown }
     } catch {
       throw new AppError('The AI question service returned an invalid response.', 502)
     }
