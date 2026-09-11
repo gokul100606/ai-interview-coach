@@ -2,21 +2,24 @@ import { Routes, Route } from 'react-router-dom'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 
-import Landing from '@/pages/Landing'
-import Login from '@/pages/Login'
-import Register from '@/pages/Register'
-import Dashboard from '@/pages/Dashboard'
-import InterviewSetup from '@/pages/InterviewSetup'
-import InterviewRoom from '@/pages/InterviewRoom'
-import Report from '@/pages/Report'
-import History from '@/pages/History'
-import Profile from '@/pages/Profile'
-import Settings from '@/pages/Settings'
-import Bookmarks from '@/pages/Bookmarks'
-import NotFound from '@/pages/NotFound'
+import { lazy, Suspense } from 'react'
+
+const Landing = lazy(() => import('@/pages/Landing'))
+const Login = lazy(() => import('@/pages/Login'))
+const Register = lazy(() => import('@/pages/Register'))
+const Dashboard = lazy(() => import('@/pages/Dashboard'))
+const InterviewSetup = lazy(() => import('@/pages/InterviewSetup'))
+const InterviewRoom = lazy(() => import('@/pages/InterviewRoom'))
+const Report = lazy(() => import('@/pages/Report'))
+const History = lazy(() => import('@/pages/History'))
+const Profile = lazy(() => import('@/pages/Profile'))
+const Settings = lazy(() => import('@/pages/Settings'))
+const Bookmarks = lazy(() => import('@/pages/Bookmarks'))
+const NotFound = lazy(() => import('@/pages/NotFound'))
 
 export default function App() {
   return (
+  <Suspense fallback={<div className="p-6">Loading...</div>}>
     <Routes>
       <Route path="/" element={<Landing />} />
 
@@ -51,6 +54,7 @@ export default function App() {
       </Route>
 
       <Route path="*" element={<NotFound />} />
-    </Routes>
-  )
+        </Routes>
+  </Suspense>
+)
 }
