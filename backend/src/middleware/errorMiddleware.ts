@@ -25,7 +25,7 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
 
   // Mongoose duplicate-key error (e.g. race on unique email)
   if (isMongoDuplicateKeyError(err)) {
-    return res.status(409).json({ success: false, message: 'An account with that email already exists' })
+    return res.status(409).json({ success: false, message: 'This item already exists' })
   }
 
   // Unexpected error — log full detail, return a generic message.

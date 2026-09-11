@@ -34,6 +34,47 @@ export default function InterviewRoom() {
   const [questions, setQuestions] = useState<Question[] | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
+  const progressKey = id ? `interview-progress:${id}` : null
+
+  useEffect(() => {
+    if (!progressKey || !questions || questions.length === 0) return
+
+    const saved = sessionStorage.getItem(progressKey)
+    if (!saved) return
+
+    try {
+      const progress = JSON.parse(saved) as {
+        index?: number
+        answerText?: string
+      }
+
+      if (
+        typeof progress.index === 'number' &&
+        progress.index >= 0 &&
+        progress.index < questions.length
+      ) {
+        setIndex(progress.index)
+      }
+
+      if (typeof progress.answerText === 'string') {
+        setAnswerText(progress.answerText)
+      }
+    } catch {
+      sessionStorage.removeItem(progressKey)
+    }
+  }, [progressKey, questions?.length])
+
+  useEffect(() => {
+  if (!progressKey || !questions || questions.length === 0) return
+
+  sessionStorage.setItem(
+      progressKey,
+      JSON.stringify({
+        index,
+        answerText,
+      }),
+    )
+  }, [progressKey, questions?.length, index, answerText])
 
   useEffect(() => {
     if (!id) return
@@ -126,6 +167,9 @@ export default function InterviewRoom() {
 
   function handleNext() {
     if (isLast) {
+      if (progressKey) {
+        sessionStorage.removeItem(progressKey)
+      }
       navigate(`/report/${id}`)
       return
     }
