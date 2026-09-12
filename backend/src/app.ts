@@ -40,9 +40,11 @@ export function createApp() {
 
   app.use(express.json({ limit: '1mb' }))
   app.use(cookieParser())
-  app.use(apiLimiter)
 
+  // Health check must bypass the API rate limiter
   app.use('/api', healthRoutes)
+
+  app.use(apiLimiter)
   app.use('/api/auth', authRoutes)
   app.use('/api/interviews', interviewRoutes)
   app.use('/api/analytics', analyticsRoutes)
