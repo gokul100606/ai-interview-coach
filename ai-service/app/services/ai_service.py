@@ -343,8 +343,7 @@ class AIService:
         except json.JSONDecodeError as exc:
 
             logger.error(
-                "Invalid JSON returned by Groq: %s",
-                raw_text,
+                "Invalid JSON returned by Groq:",
             )
 
             raise ValueError(
